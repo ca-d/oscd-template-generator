@@ -21,6 +21,21 @@ function newActionEvent(action, eventInitDict) {
   });
 }
 
+function download(filename, text, mimeType = 'text/json') {
+  const pom = document.createElement('a');
+  pom.setAttribute('href', `data:${mimeType};charset=utf-8,${encodeURIComponent(text)}`);
+  pom.setAttribute('download', filename);
+
+  if (document.createEvent) {
+    var event = document.createEvent('MouseEvents');
+    event.initEvent('click', true, true);
+    pom.dispatchEvent(event);
+  }
+  else {
+    pom.click();
+  }
+}
+
 export default class OscdTemplateGenerator extends LitElement {
   get selection() {
     return this.treeUI.selection;
@@ -30,8 +45,32 @@ export default class OscdTemplateGenerator extends LitElement {
     this.treeUI.selection = s;
   }
 
+  saveSelection() {
+    download(Object.keys(this.selection).join('_') + '_selection.json',
+      JSON.stringify(this.selection));
+  }
+
+  async loadSelection(event) {
+    var _a, _b, _d;
+    const file = (_d = (_b = (_a = event.target) === null || _a === void 0 ? void 0 : _a.files) === null || _b === void 0 ? void 0 : _b.item(0)) !== null && _d !== void 0 ? _d : false;
+    if (!file)
+      return;
+    this.treeUI.selection = JSON.parse(await file.text());
+    this.treeUI.searchUI.value = this.treeUI.depth ? ' ' : '';
+    this.treeUI.collapsed = new Set();
+    this.treeUI.selectionInputUI.onchange = null;
+  }
+
   render() {
-    return html`<div><oscd-tree-explorer multi></oscd-tree-explorer></div>
+    return html`
+      <button @click=${() => this.saveSelection()}>Save Selection</button>
+      <form>
+      <label for="selection-input">Load selection</label><br>
+      <input @click=${(event) => { event.target.value = ''; }}
+      @change=${event => this.loadSelection(event)} accept=".json" type="file">
+      </input>
+      </form>
+      <div><oscd-tree-explorer multi></oscd-tree-explorer></div>
       <mwc-fab extended icon="add" label="Add Types" @click=${() => this.saveTemplates()}></mwc-fab>`;
   }
 
