@@ -1,8 +1,12 @@
 import { css, html, LitElement } from 'https://unpkg.com/lit?module';
 
+import 'https://unpkg.com/@material/mwc-fab?module';
+
 import 'https://unpkg.com/@openscd/oscd-tree-explorer?module';
 
 import { generateTemplates } from './generate-templates.js';
+
+let lastSelection = {};
 
 function newEditEvent(edit) {
   return new CustomEvent('oscd-edit', {
@@ -48,6 +52,11 @@ export default class OscdTemplateGenerator extends LitElement {
   saveSelection() {
     download(Object.keys(this.selection).join('_') + '_selection.json',
       JSON.stringify(this.selection));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    lastSelection = this.selection;
   }
 
   async loadSelection(event) {
@@ -119,7 +128,8 @@ export default class OscdTemplateGenerator extends LitElement {
     const tree = await fetch(new URL('./tree.json', import.meta.url))
       .then(res => res.json());
     this.treeUI.tree = tree;
-    import('https://unpkg.com/@material/mwc-fab?module');
+    await this.treeUI.updateComplete;
+    this.selection = lastSelection;
   }
 
   static get properties() {
