@@ -146,7 +146,7 @@ export function generateTemplates(selection, doc, data) {
             // eslint-disable-next-line no-continue
             if (!sel[name])
                 continue;
-            const bda = createElement('BDA', { name, dchg, dupd, qchg });
+            const bda = createElement('BDA', { name });
             if (dep.typeKind === 'BASIC' || !dep.typeKind) {
                 bda.setAttribute('bType', (_a = dep.type) !== null && _a !== void 0 ? _a : '');
             }

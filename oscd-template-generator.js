@@ -6,6 +6,9 @@ import 'https://unpkg.com/@openscd/oscd-tree-explorer?module';
 
 import { generateTemplates } from './generate-templates.js';
 
+const tree = await fetch(new URL('./tree.json', import.meta.url))
+  .then(res => res.json());
+
 let lastSelection = {};
 
 function newEditEvent(edit) {
@@ -67,12 +70,13 @@ export default class OscdTemplateGenerator extends LitElement {
     this.treeUI.selection = JSON.parse(await file.text());
     this.treeUI.searchUI.value = this.treeUI.depth ? ' ' : '';
     this.treeUI.collapsed = new Set();
-    this.treeUI.selectionInputUI.onchange = null;
+    this.shadowRoot.querySelector('input').onchange = null;
   }
 
   render() {
+    if (!this.doc) return html``;
     return html`
-      <button @click=${() => this.saveSelection()}>Save Selection</button>
+      <button @click=${() => this.saveSelection()}>Download Selection</button>
       <form>
       <label for="selection-input">Load selection</label><br>
       <input @click=${(event) => { event.target.value = ''; }}
@@ -101,9 +105,9 @@ export default class OscdTemplateGenerator extends LitElement {
 
     if (templates.ownerDocument !== this.doc) {
       this.dispatchEvent(
-        newActionEvent({new: {parent: this.doc.rootElement, element: templates, reference: null }}));
+        newActionEvent({new: {parent: this.doc.documentElement, element: templates, reference: null }}));
       this.dispatchEvent(
-        newEditEvent({parent: this.doc.rootElement, node: templates}));
+        newEditEvent({parent: this.doc.documentElement, node: templates}));
     }
 
     delete this.treeUI.selection[""]; // workaround for UI bug
@@ -125,15 +129,13 @@ export default class OscdTemplateGenerator extends LitElement {
   }
 
   async firstUpdated() {
-    const tree = await fetch(new URL('./tree.json', import.meta.url))
-      .then(res => res.json());
     this.treeUI.tree = tree;
     await this.treeUI.updateComplete;
     this.selection = lastSelection;
   }
 
   static get properties() {
-    return {selection: {type: Object, reflect: true}};
+    return {doc: {attribute: false}, selection: {type: Object, reflect: true}};
   }
 
   static styles = css`
