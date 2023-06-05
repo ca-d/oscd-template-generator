@@ -2,7 +2,7 @@ import { css, html, LitElement } from 'https://unpkg.com/lit?module';
 
 import 'https://unpkg.com/@material/mwc-fab?module';
 
-import 'https://unpkg.com/@openscd/oscd-tree-explorer?module';
+import 'https://unpkg.com/@openscd/oscd-tree-grid?module';
 
 import { generateTemplates } from './generate-templates.js';
 
@@ -103,7 +103,7 @@ export default class OscdTemplateGenerator extends LitElement {
   render() {
     if (!this.doc) return html``;
     return html`
-      <div><oscd-tree-explorer multi></oscd-tree-explorer></div>
+      <div><oscd-tree-grid multi></oscd-tree-grid></div>
       <form>
         <button @click=${() => this.saveSelection()}>Download Selection</button></br>
         <label for="selection-input">Load selection</label><br>
@@ -115,7 +115,7 @@ export default class OscdTemplateGenerator extends LitElement {
   }
 
   get treeUI() {
-    return  this.shadowRoot.querySelector('oscd-tree-explorer');
+    return  this.shadowRoot.querySelector('oscd-tree-grid');
   }
 
   saveTemplates() {
