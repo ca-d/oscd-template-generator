@@ -10,6 +10,7 @@ const tree = await fetch(new URL('./tree.json', import.meta.url))
   .then(res => res.json());
 
 let lastSelection = {};
+let lastFilter = '';
 
 function newEditEvent(edit) {
   return new CustomEvent('oscd-edit', {
@@ -28,13 +29,30 @@ function newActionEvent(action, eventInitDict) {
   });
 }
 
+export function getDTTReference(parent, tag) {
+  const children = Array.from(parent.children);
+
+  const sequence = ['LNodeType', 'DOType', 'DAType', 'EnumType'];
+  let index = sequence.findIndex(element => element === tag);
+
+  if (index < 0) return null;
+
+  let nextSibling;
+  while (index < sequence.length && !nextSibling) {
+    nextSibling = children.find(child => child.tagName === sequence[index]);
+    index++;
+  }
+
+  return nextSibling ?? null;
+}
+
 function download(filename, text, mimeType = 'text/json') {
   const pom = document.createElement('a');
   pom.setAttribute('href', `data:${mimeType};charset=utf-8,${encodeURIComponent(text)}`);
   pom.setAttribute('download', filename);
 
   if (document.createEvent) {
-    var event = document.createEvent('MouseEvents');
+    const event = document.createEvent('MouseEvents');
     event.initEvent('click', true, true);
     pom.dispatchEvent(event);
   }
@@ -52,6 +70,14 @@ export default class OscdTemplateGenerator extends LitElement {
     this.treeUI.selection = s;
   }
 
+  get filter() {
+    return this.treeUI.filter;
+  }
+
+  set filter(f) {
+    this.treeUI.filter = f;
+  }
+
   saveSelection() {
     download(Object.keys(this.selection).join('_') + '_selection.json',
       JSON.stringify(this.selection));
@@ -60,6 +86,7 @@ export default class OscdTemplateGenerator extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     lastSelection = this.selection;
+    lastFilter = this.filter;
   }
 
   async loadSelection(event) {
@@ -76,14 +103,14 @@ export default class OscdTemplateGenerator extends LitElement {
   render() {
     if (!this.doc) return html``;
     return html`
-      <button @click=${() => this.saveSelection()}>Download Selection</button>
-      <form>
-      <label for="selection-input">Load selection</label><br>
-      <input @click=${(event) => { event.target.value = ''; }}
-      @change=${event => this.loadSelection(event)} accept=".json" type="file">
-      </input>
-      </form>
       <div><oscd-tree-explorer multi></oscd-tree-explorer></div>
+      <form>
+        <button @click=${() => this.saveSelection()}>Download Selection</button></br>
+        <label for="selection-input">Load selection</label><br>
+        <input @click=${(event) => { event.target.value = ''; }}
+        @change=${event => this.loadSelection(event)} accept=".json" type="file">
+        </input>
+      </form>
       <mwc-fab extended icon="add" label="Add Types" @click=${() => this.saveTemplates()}></mwc-fab>`;
   }
 
@@ -120,7 +147,7 @@ export default class OscdTemplateGenerator extends LitElement {
     [...lnTypes, ...doTypes, ...daTypes, ...enumTypes].forEach(element => {
       if (!this.doc.querySelector(`${element.tagName}[id="${element.id}"]`)) {
         element.setAttribute('desc', JSON.stringify(this.selection[element.id.split('$')[0]]));
-        const reference = templates.querySelector(`${element.tagName}:last-of-type`)?.nextSibling ?? null
+        const reference = getDTTReference(templates, element.tagName);
         this.dispatchEvent(newActionEvent({new: {parent: templates, element, reference }}));
         this.dispatchEvent(newEditEvent({parent: templates, node: element, reference }));
       }
@@ -131,21 +158,30 @@ export default class OscdTemplateGenerator extends LitElement {
   async firstUpdated() {
     this.treeUI.tree = tree;
     await this.treeUI.updateComplete;
+    this.filter = lastFilter;
     this.selection = lastSelection;
   }
 
-  static get properties() {
-    return {doc: {attribute: false}, selection: {type: Object, reflect: true}};
-  }
+  static properties = {
+    doc: {attribute: false},
+    selection: {type: Object, reflect: true},
+    filter: {type: String, reflect: true}
+  };
 
   static styles = css`
 div {
   margin: 12px;
 }
 mwc-fab {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+}
+form {
+  opacity: 0.1;
+}
+form:hover, form:focus-within, form:focus {
+  opacity: 1;
 }
 `;
 }
