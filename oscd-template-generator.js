@@ -101,7 +101,6 @@ export default class OscdTemplateGenerator extends LitElement {
   }
 
   render() {
-    if (!this.doc) return html``;
     return html`
       <div><oscd-tree-grid multi></oscd-tree-grid></div>
       <form>
@@ -111,7 +110,7 @@ export default class OscdTemplateGenerator extends LitElement {
         @change=${event => this.loadSelection(event)} accept=".json" type="file">
         </input>
       </form>
-      <mwc-fab extended icon="add" label="Add Types" @click=${() => this.saveTemplates()}></mwc-fab>`;
+      ${this.doc ? html`<mwc-fab extended icon="add" label="Add Types" @click=${() => this.saveTemplates()}></mwc-fab>` : html``}`;
   }
 
   get treeUI() {
