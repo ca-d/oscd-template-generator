@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { cyrb64 } from './cyrb64.js';
+import { cyrb64 } from '@openscd/open-scd-core';
 function describeEnumType(element) {
     var _a, _b;
     const vals = {};
@@ -92,17 +91,29 @@ function describeElement(element) {
 function hashElement(element) {
     return cyrb64(JSON.stringify(describeElement(element)));
 }
-export function generateTemplates(selection, doc, data) {
+export function generateTemplates(selection, doc, data, lnClass) {
     const types = new Set();
-    const enumTypes = new Set();
-    const daTypes = new Set();
-    const doTypes = new Set();
-    const lnTypes = new Set();
-    /** @returns a new [[`tag`]] element owned by [[`doc`]]. */
+    const elements = {
+        LNodeType: [],
+        DOType: [],
+        DAType: [],
+        EnumType: [],
+    };
+    function identify(element, name) {
+        var _a;
+        const hash = hashElement(element);
+        const id = `${name}$oscd$_${hash}`;
+        element.setAttribute('id', id);
+        if (!types.has(id)) {
+            types.add(id);
+            (_a = elements[element.tagName]) === null || _a === void 0 ? void 0 : _a.push(element);
+        }
+        return id;
+    }
     function createElement(tag, attrs = {}) {
         const element = doc.createElementNS(doc.documentElement.namespaceURI, tag);
         Object.entries(attrs)
-            .filter(([_, value]) => value !== null && value !== undefined)
+            .filter(([_name, value]) => value !== null && value !== undefined)
             .forEach(([name, value]) => element.setAttribute(name, value));
         return element;
     }
@@ -124,21 +135,14 @@ export function generateTemplates(selection, doc, data) {
         });
         const enumType = createElement('EnumType');
         vals.forEach(val => enumType.append(val));
-        const hash = hashElement(enumType);
-        const id = `${path[path.length - 1]}$${hash}`;
-        enumType.setAttribute('id', id);
-        if (!types.has(id)) {
-            types.add(id);
-            enumTypes.add(enumType);
-        }
-        return id;
+        return identify(enumType, path[path.length - 1]);
     }
-    function addDAType(path, sel, stValSel = {}) {
+    function addDAType(path, sel, underlyingValSel = {}) {
         var _a;
         let d = data;
         for (const slug of path.slice(0, -1))
             d = d[slug].children;
-        const { children, tagName, underlyingTypeKind, underlyingType, typeKind, dchg, dupd, qchg, type: bType, fc, } = d[path[path.length - 1]];
+        const { children, underlyingTypeKind, underlyingType, typeKind } = d[path[path.length - 1]];
         if (typeKind !== 'CONSTRUCTED')
             throw new Error(`DAType typeKind is not CONSTRUCTED, but ${typeKind}`);
         const daType = createElement('DAType');
@@ -151,37 +155,40 @@ export function generateTemplates(selection, doc, data) {
                 bda.setAttribute('bType', (_a = dep.type) !== null && _a !== void 0 ? _a : '');
             }
             if (dep.typeKind === 'ENUMERATED') {
-                const enumHash = addEnumType(path.concat([name]), sel[name]);
+                const enumId = addEnumType(path.concat([name]), sel[name]);
                 bda.setAttribute('bType', 'Enum');
-                bda.setAttribute('type', enumHash);
+                bda.setAttribute('type', enumId);
             }
             if (dep.typeKind === 'undefined') {
                 if (underlyingTypeKind === 'BASIC')
                     bda.setAttribute('bType', underlyingType);
                 else if (underlyingTypeKind === 'ENUMERATED') {
-                    const { stVal } = d;
-                    const enumHash = addEnumType(path.slice(0, -1).concat(['stVal']), stValSel);
+                    const enumId = addEnumType(path.slice(0, -1).concat(['stVal']), underlyingValSel);
                     bda.setAttribute('bType', 'Enum');
-                    bda.setAttribute('type', enumHash);
+                    bda.setAttribute('type', enumId);
+                }
+                else if (underlyingTypeKind === 'CONSTRUCTED') {
+                    let daId = '';
+                    try {
+                        daId = addDAType(path.slice(0, -1).concat(['mxVal']), underlyingValSel);
+                    }
+                    catch (_b) {
+                        throw new Error(`Unexpected selection ${JSON.stringify(path)} without mxVal sibling`);
+                    }
+                    bda.setAttribute('bType', 'Struct');
+                    bda.setAttribute('type', daId);
                 }
                 else
                     throw new Error(`Unexpected underlyingTypeKind ${underlyingTypeKind}`);
             }
             if (dep.typeKind === 'CONSTRUCTED') {
-                const daHash = addDAType(path.concat([name]), sel[name]);
+                const daId = addDAType(path.concat([name]), sel[name], underlyingValSel);
                 bda.setAttribute('bType', 'Struct');
-                bda.setAttribute('type', daHash);
+                bda.setAttribute('type', daId);
             }
             daType.append(bda);
         }
-        const hash = hashElement(daType);
-        const id = `${path[path.length - 1]}$${hash}`;
-        daType.setAttribute('id', id);
-        if (!types.has(id)) {
-            types.add(id);
-            daTypes.add(daType);
-        }
-        return id;
+        return identify(daType, path[path.length - 1]);
     }
     function addDOType(path, sel) {
         var _a;
@@ -210,47 +217,29 @@ export function generateTemplates(selection, doc, data) {
                     da.setAttribute('bType', (_a = dep.type) !== null && _a !== void 0 ? _a : '');
                 }
                 if (dep.typeKind === 'ENUMERATED') {
-                    const enumHash = addEnumType(path.concat([name]), sel[name]);
+                    const enumId = addEnumType(path.concat([name]), sel[name]);
                     da.setAttribute('bType', 'Enum');
-                    da.setAttribute('type', enumHash);
+                    da.setAttribute('type', enumId);
                 }
                 if (dep.typeKind === 'CONSTRUCTED') {
-                    const daHash = addDAType(path.concat([name]), sel[name], sel.stVal);
+                    const underlyingVal = sel.stVal || sel.mxVal;
+                    const daId = addDAType(path.concat([name]), sel[name], underlyingVal);
                     da.setAttribute('bType', 'Struct');
-                    da.setAttribute('type', daHash);
+                    da.setAttribute('type', daId);
                 }
                 doType.append(da);
             }
         }
-        const hash = hashElement(doType);
-        const id = `${path[path.length - 1]}$${hash}`;
-        doType.setAttribute('id', id);
-        if (!types.has(id)) {
-            types.add(id);
-            doTypes.add(doType);
-        }
-        return id;
+        return identify(doType, path[path.length - 1]);
     }
-    function addLNodeType(path, sel) {
-        const [lnClass] = path;
-        const ln = data[lnClass];
-        const lnType = createElement('LNodeType', { lnClass });
-        Object.keys(sel).forEach(name => {
-            const type = addDOType(path.concat([name]), sel[name]);
-            const { transient } = ln.children[name];
-            const doElement = createElement('DO', { name, type, transient });
-            lnType.append(doElement);
-        });
-        const hash = hashElement(lnType);
-        const id = `${lnClass}$${hash}`;
-        lnType.setAttribute('id', id);
-        if (!types.has(id)) {
-            types.add(id);
-            lnTypes.add(lnType);
-        }
-        return id;
-    }
-    Object.entries(selection).forEach(([name, sel]) => addLNodeType([name], sel));
-    return { enumTypes, daTypes, doTypes, lnTypes };
+    const lnType = createElement('LNodeType', { lnClass });
+    Object.keys(selection).forEach(name => {
+        const type = addDOType([name], selection[name]);
+        const { transient } = data[name];
+        const doElement = createElement('DO', { name, type, transient });
+        lnType.append(doElement);
+    });
+    identify(lnType, lnClass);
+    return elements;
 }
 //# sourceMappingURL=generate-templates.js.map
