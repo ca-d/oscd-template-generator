@@ -44,17 +44,17 @@ const dataTypeTemplates = new DOMParser()
   )
   .querySelector('DataTypeTemplates')!;
 
-function getDTTReference(parent: Element, tag: string) {
+const tags = ['LNodeType', 'DOType', 'DAType', 'EnumType'] as const;
+type Tag = (typeof tags)[number];
+
+function getDTTReference(parent: Element, tag: Tag) {
   const children = Array.from(parent.children);
 
-  const sequence = ['LNodeType', 'DOType', 'DAType', 'EnumType'];
-  let index = sequence.findIndex(element => element === tag);
-
-  if (index < 0) return null;
+  let index = tags.findIndex(element => element === tag);
 
   let nextSibling;
-  while (index < sequence.length && !nextSibling) {
-    nextSibling = children.find(child => child.tagName === sequence[index]);
+  while (index < tags.length && !nextSibling) {
+    nextSibling = children.find(child => child.tagName === tags[index]);
     index++;
   }
 
@@ -144,7 +144,7 @@ export default class TemplateGenerator extends LitElement {
 
     [...LNodeType, ...DOType, ...DAType, ...EnumType].forEach(element => {
       if (!this.doc?.querySelector(`${element.tagName}[id="${element.id}"]`)) {
-        const reference = getDTTReference(templates, element.tagName);
+        const reference = getDTTReference(templates, element.tagName as Tag);
         this.dispatchEvent(
           newEditEvent({ parent: templates, node: element, reference })
         );

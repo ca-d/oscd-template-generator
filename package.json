@@ -8,12 +8,13 @@
     "prepare": "gunzip -d tree.json.gz && npm run build",
     "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
     "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",
-    "test": "tsc && wtr --coverage",
-    "test:watch": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch\"",
-    "build": "rimraf dist && tsc && rollup -c rollup.config.js && npm run analyze -- --exclude dist",
+    "test": "npm run compile && wtr --coverage",
+    "test:watch": "npm run compile && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch --coverage\"",
+    "compile": "rimraf dist && tsc && cpy tree.json dist --no-overwrite",
+    "build": "npm run compile && rollup -c rollup.config.js && npm run analyze -- --exclude dist",
     "start:build": "web-dev-server --root-dir dist --app-index index.html --open",
     "analyze": "cem analyze --litelement",
-    "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
+    "start": "npm run compile && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
     "deploy": "npm run build && gh-pages --dist 'dist'"
   },
   "dependencies": {
@@ -41,6 +42,7 @@
     "@web/test-runner": "^0.14.0",
     "babel-plugin-template-html-minifier": "^4.1.0",
     "concurrently": "^5.3.0",
+    "cpy-cli": "^5.0.0",
     "deepmerge": "^4.2.2",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
@@ -53,6 +55,7 @@
     "rollup": "^2.60.0",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-workbox": "^6.2.0",
+    "sinon": "^15.2.0",
     "tslib": "^2.3.1",
     "typescript": "^4.5.2"
   },
