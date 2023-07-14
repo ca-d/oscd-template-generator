@@ -18,6 +18,15 @@ import '@openscd/oscd-tree-grid';
 
 import { generateTemplates } from './generate-templates.js';
 
+// open-scd editor action for backwards compatibility
+function newCreateEvent(parent: Node, element: Node, reference?: Node | null) {
+  return new CustomEvent('editor-action', {
+    bubbles: true,
+    composed: true,
+    detail: { action: { new: { parent, element, reference } } },
+  });
+}
+
 const tree = await fetch(new URL('./tree.json', import.meta.url)).then(res =>
   res.json()
 );
@@ -122,6 +131,7 @@ export default class TemplateGenerator extends LitElement {
       this.dispatchEvent(
         newEditEvent({ parent: this.doc.documentElement, node: templates })
       );
+      this.dispatchEvent(newCreateEvent(this.doc.documentElement, templates));
     }
 
     // delete this.treeUI.selection['']; // workaround for UI bug
@@ -138,6 +148,7 @@ export default class TemplateGenerator extends LitElement {
         this.dispatchEvent(
           newEditEvent({ parent: templates, node: element, reference })
         );
+        this.dispatchEvent(newCreateEvent(templates, element, reference));
       }
     });
 
